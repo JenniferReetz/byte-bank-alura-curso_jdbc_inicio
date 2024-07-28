@@ -10,23 +10,17 @@ public class Conta {
     private Integer numero;
     private BigDecimal saldo;
     private Cliente titular;
+    private boolean ativa;
 
-    public Conta(Integer numero, Cliente titular) {
+    public Conta(Integer numero, BigDecimal saldo, Cliente titular, boolean ativa) {
         this.numero = numero;
         this.titular = titular;
-        this.saldo = BigDecimal.ZERO;
+        this.saldo = saldo;
+        this.ativa = ativa;
     }
 
     public boolean possuiSaldo() {
         return this.saldo.compareTo(BigDecimal.ZERO) != 0;
-    }
-
-    public void sacar(BigDecimal valor) {
-        this.saldo = this.saldo.subtract(valor);
-    }
-
-    public void depositar(BigDecimal valor) {
-        this.saldo = this.saldo.add(valor);
     }
 
     @Override
@@ -45,9 +39,9 @@ public class Conta {
     @Override
     public String toString() {
         return "Conta{" +
-                "numero='" + numero + '\'' +
-                ", saldo=" + saldo +
-                ", titular=" + titular +
+                "numero ='" + numero + '\'' +
+                ", saldo =" + saldo +
+                ", titular =" + titular +
                 '}';
     }
 
