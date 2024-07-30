@@ -8,12 +8,11 @@ import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.util.HashSet;
 import java.util.Set;
 
 public class ContaService {
 
-    private Set<Conta> contas = new HashSet<>();
+
 
     private ConnectionFactory connection;
 
@@ -28,27 +27,7 @@ public class ContaService {
 
     public void abrir(DadosAberturaConta dadosDaConta) {
         Connection conn = connection.recuperarConexao();
-        var cliente = new Cliente(dadosDaConta.dadosCliente());
-        var conta = new Conta(dadosDaConta.numero(), BigDecimal.ZERO, cliente, true);
-
-        String sql = "INSERT INTO conta (numero, saldo, cliente_nome, cliente_cpf, cliente_email)" +
-                "VALUES (?, ?, ?, ?, ?)";
-
-        try {
-            PreparedStatement preparedStatement = conn.prepareStatement(sql);
-
-            preparedStatement.setInt(1, conta.getNumero());
-            preparedStatement.setBigDecimal(2, BigDecimal.ZERO);
-            preparedStatement.setString(3, dadosDaConta.dadosCliente().nome());
-            preparedStatement.setString(4, dadosDaConta.dadosCliente().cpf());
-            preparedStatement.setString(5, dadosDaConta.dadosCliente().email());
-            preparedStatement.setBoolean(6, true);
-
-            preparedStatement.execute();
-
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
+        new ContaDAO(conn).salvar(dadosDaConta);
     }
 
     public void realizarSaque(Integer numeroDaConta, BigDecimal valor) {
@@ -64,6 +43,9 @@ public class ContaService {
         BigDecimal novoValor = conta.getSaldo().subtract(valor);
         Connection conn = connection.recuperarConexao();
         new ContaDAO(conn).alterar(conta.getNumero(), novoValor);
+        if (!conta.getEstaAtiva()){
+        throw new RegraDeNegocioException("Conta não esta ativa");
+        }
     }
 
     public void realizarDeposito(Integer numeroDaConta, BigDecimal valor) {
@@ -73,7 +55,9 @@ public class ContaService {
         }
         BigDecimal novoValor = conta.getSaldo().add(valor);
         alterar(conta, novoValor);
-
+        if (!conta.getEstaAtiva()){
+            throw new RegraDeNegocioException("Conta não esta ativa");
+        }
     }
     public void realizarTransferencia(Integer numeroDaContaOrigem, Integer numeroDaContaDestino,
                                       BigDecimal valor) {
@@ -87,9 +71,22 @@ public class ContaService {
             throw new RegraDeNegocioException("Conta não pode ser encerrada pois ainda possui saldo!");
         }
 
-        contas.remove(conta);
+        Connection conn = connection.recuperarConexao();
+        new ContaDAO(conn).deletar(numeroDaConta);
     }
-//erro mais consecutivo aqui
+
+    public void encerrarLogico(Integer numeroDaConta){
+        var conta = buscarContaPorNumero(numeroDaConta);
+        if (conta.possuiSaldo()) {
+            throw new RegraDeNegocioException("Conta não pode ser encerrada pois ainda possui saldo!");
+        }
+
+        Connection conn = connection.recuperarConexao();
+        new ContaDAO(conn).alterarlogico(numeroDaConta);
+    }
+
+
+
     private Conta buscarContaPorNumero(Integer numeroDaConta) {
         Connection conn = connection.recuperarConexao();
         Conta conta = new ContaDAO(conn).listarPorNumero(numeroDaConta);
